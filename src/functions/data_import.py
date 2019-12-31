@@ -56,9 +56,23 @@ def make_ts_index(df, timeCol):
     df_cpy.index = df_cpy[timeCol]    
     return df_cpy
 
-def load_data(loc):
+def walklevel(some_dir, level=1):
+    """It works just like os.walk, but you can pass it a level parameter
+       that indicates how deep the recursion will go.
+       If depth is -1 (or less than 0), the full depth is walked.
+    """
+    some_dir = some_dir.rstrip(os.path.sep)
+    assert os.path.isdir(some_dir)
+    num_sep = some_dir.count(os.path.sep)
+    for root, dirs, files in os.walk(some_dir):
+        yield root, dirs, files
+        num_sep_this = root.count(os.path.sep)
+        if num_sep + level <= num_sep_this:
+            del dirs[:]
+
+def load_data(loc, level):
     df_list = []
-    for dirname, _, filenames in os.walk(loc):
+    for dirname, _, filenames in walklevel(loc, level):
         for filename in filenames:
             print('**' + filename + ':')
             df_list.append(import_data(dirname + filename))
