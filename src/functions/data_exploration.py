@@ -92,7 +92,18 @@ def show_nan(df):
     """
     results = {}
     for col in df.columns:
-        results[col] = df[col][df[col].isna()]
-               
+        results[col] = df[col][df[col].isna()]               
     return results
+
+def get_missing_percentage(df, *index_level):
+    """
+        Returns the percentage of missing values in every column
+        of a dataframe, optionally grouping by an index_level .
+    """
+    f = lambda x : round((x.isna().sum()/x.shape[0])*100, 2)
+    if index_level:
+        nans = df.groupby(level=index_level).apply(f)
+    else:
+        nans = df.apply(f)
+    return nans
 

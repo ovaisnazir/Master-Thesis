@@ -49,14 +49,8 @@ def import_data(file):
     df = reduce_mem_usage(df)
     return df
 
-def make_ts_index(df, timeCol):
-    """create a datetime index from timeCol column"""
-    df_cpy = df.copy()
-    df_cpy[timeCol] = pd.to_datetime(df_cpy[timeCol])
-    df_cpy.index = df_cpy[timeCol]    
-    return df_cpy
 
-def walklevel(some_dir, level=1):
+def walklevel(some_dir, level):
     """It works just like os.walk, but you can pass it a level parameter
        that indicates how deep the recursion will go.
        If depth is -1 (or less than 0), the full depth is walked.
@@ -70,7 +64,12 @@ def walklevel(some_dir, level=1):
         if num_sep + level <= num_sep_this:
             del dirs[:]
 
-def load_data(loc, level):
+def load_data(loc, level=0):
+    """ It loads all csv files in a location and returns a list of data frames 
+        created from those files. Inputs:
+            - loc: directory where the csv files are located.
+            - level: how deep the recursion will go in the directory. By default is 0.
+    """
     df_list = []
     for dirname, _, filenames in walklevel(loc, level):
         for filename in filenames:
@@ -79,3 +78,43 @@ def load_data(loc, level):
             print('\n')
     
     return df_list
+
+def import_raw_data(loc):
+    df_list = load_data(loc)
+    df = pd.merge(
+        pd.merge(df_list[0], df_list[1], how='left', on='building_id'),
+        df_list[2],
+        how='left',
+        on=['site_id','timestamp']
+    )
+    df['timestamp'] = pd.to_datetime(df['timestamp'])   
+    df['year_built'] = pd.array(df['year_built'], dtype=pd.Int16Dtype())
+    df['floor_count'] = pd.array(df['floor_count'], dtype=pd.Int16Dtype())
+
+    # Rearranging columns
+    cols = [
+        'site_id',
+        'building_id', 
+        'year_built', 
+        'primary_use', 
+        'floor_count', 
+        'square_feet',
+        'meter',  
+        'timestamp',
+        'air_temperature', 
+        'cloud_coverage',
+        'dew_temperature',
+        'precip_depth_1_hr',
+        'sea_level_pressure',
+        'wind_direction',
+        'wind_speed',
+        'meter_reading'
+    ]
+
+    df = df[cols]
+    return df
+
+def get_data_by_site(df, site):
+    df = df[df['site_id'] == site]
+    del df['site_id']
+    return df
