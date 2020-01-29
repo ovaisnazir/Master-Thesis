@@ -100,7 +100,7 @@ def get_missing_percentage(df, *index_level):
         Returns the percentage of missing values in every column
         of a dataframe, optionally grouping by an index_level .
     """
-    f = lambda x : round((x.isna().sum()/x.shape[0])*100, 2)
+    f = lambda x : round((x.isna().sum() / x.shape[0]) * 100, 2)
     if index_level:
         nans = df.groupby(level=index_level).apply(f)
     else:
