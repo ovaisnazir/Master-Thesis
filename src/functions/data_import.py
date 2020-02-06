@@ -43,10 +43,15 @@ def reduce_mem_usage(df):
     return df
 
 
-def import_data(file):
+def import_data(file, *date_col):
     """create a dataframe and optimize its memory usage"""
-    df = pd.read_csv(file, keep_date_col=True)
-    df = reduce_mem_usage(df)
+    if date_col:
+        df = pd.read_csv(file, parse_dates=[date_col])
+        df = reduce_mem_usage(df)
+    else:
+        df = pd.read_csv(file, keep_date_col=True)
+        df = reduce_mem_usage(df)
+                                                               
     return df
 
 
@@ -80,7 +85,7 @@ def load_data(loc, level=0):
     return df_list
 
 def import_raw_data(loc):
-    df_list = load_data(loc)
+    df_list = load_data(loc) 
     df = pd.merge(
         pd.merge(df_list[0], df_list[1], how='left', on='building_id'),
         df_list[2],
