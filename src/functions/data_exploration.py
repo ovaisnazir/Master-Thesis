@@ -11,34 +11,35 @@ import missingno as msno
 import pandas_profiling
 
 
-def get_report_by_site(df, sites):
-    """Generate a report for every site in list 'sites'
+def get_report_by_NWP(df, nwps):
+    """
+        Generate a report for every WF in list 'wfs'
     """
     reports = {}
-    for site in sites:
+    for nwp in nwps:
         try:
-            report = df.loc[df['site_id'] == site, :].profile_report(
-                title='Report Site {}'.format(site), 
+            report = df.loc[df['NWP'] == nwp, :].profile_report(
+                title='Profile for NWP{}'.format(nwp), 
                 style={'full_width':True}
             )          
-            reports[site] = report
+            reports[nwp] = report
         except Exception:
-            print('WARN: Report for site {} has not been generated'.format(site))
+            print('WARN: Report for NWP{} has not been generated'.format(nwp))
             continue
                     
     return reports
 
 
-def export_reports(df, reports, loc):
+def export_reports(name, reports, loc):
     """ Export each report in 'reports' to html in the location indicated by 'loc'
     """
     for key in reports.keys():
         try:
             reports[key].to_file(
-                output_file = loc + '{}_site{}.html'.format(df.name, key)      
+                output_file = loc + '{}_NWP{}.html'.format(name, key)      
             )
         except Exception:
-            print('WARN: Exportation failed for site {}'.format(key))
+            print('WARN: Exportation failed for NWP{}'.format(key))
             continue
             
 def test_interpolate_methods(df, col, methods, n, order):
@@ -106,4 +107,14 @@ def get_missing_percentage(df, *index_level):
     else:
         nans = df.apply(f)
     return nans
+
+def get_nan_indexes(data_frame):
+    indexes = []
+    for column in data_frame:
+        index = data_frame[column].index[data_frame[column].apply(np.isnan)]
+        if len(index):
+            indexes.append(index[0])
+    df_index = data_frame.index.values.tolist()
+    return [df_index.index(i) for i in set(indexes)]
+
 

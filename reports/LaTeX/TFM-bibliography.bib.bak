@@ -1,0 +1,25 @@
+% Encoding: UTF-8
+
+@InBook{Tong2010,
+  author    = {Wei Tong},
+  editor    = {W. TONG, Kollmorgen Corporation, USA},
+  chapter   = {Fundamentals of Wind Energy},
+  pages     = {3-46},
+  publisher = {WITPress},
+  title     = {Wind Power Generation and Wind Turbine Design.},
+  year      = {2010},
+  isbn      = {978-1-84564-205-1},
+  series    = {WIT Transactions on State-of-the-art in Science and Engineering},
+  volume    = {44},
+}
+
+@Article{Jung2014,
+  author  = {Jaesung Jung ; Robert P. Broadwater},
+  journal = {Renewable and Suistainable Energy Reviews},
+  title   = {Current status and future advances for wind speed and power forecasting.},
+  year    = {2014},
+  pages   = {762-777},
+  volume  = {31},
+}
+
+@Comment{jabref-meta: databaseType:bibtex;}

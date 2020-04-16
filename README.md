@@ -1,5 +1,5 @@
 Master Thesis: 
-"Prediction of Building Energy Consumption Using Machine Learning Techniques"
+"Wind Power forecasting for the day-ahead energy market"
 ==============================
 
 Master Thesis on Decision Systems Engineering (https://www.urjc.es/estudios/master/915-ingenieria-de-sistemas-de-decision).
