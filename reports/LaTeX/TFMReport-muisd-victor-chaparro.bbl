@@ -1,0 +1,51 @@
+\begin{thebibliography}{0}
+%Comandos de formato, por si no est'an definidos.
+\ProvideTextCommand{\guillemotleft}{OT1}{\leavevmode\raise
+  .27ex\hbox{$\scriptscriptstyle\ll$}}
+  \ProvideTextCommand{\guillemotright}{OT1}{\leavevmode\raise
+  .27ex\hbox{$\scriptscriptstyle\gg$}}
+\providecommand{\enquote}[1]{\guillemotleft#1\guillemotright}
+  \providecommand{\natexlab}[1]{#1}
+  \providecommand{\bibnamefont}[1]{\textsc{#1}}
+  \providecommand{\bibfnamefont}[1]{\textsc{#1}}
+  \providecommand{\bibfnamefontand}[1]{#1}
+  \providecommand{\citenamefont}[1]{#1}
+  \providecommand{\bibnamefont}[1]{\textsc{#1}}
+  \providecommand{\bbletalfont}[1]{\emph{#1}}
+  \providecommand{\citeandfont}[1]{#1} \providecommand{\citetalfont}[1]{#1}
+  \providecommand{\bibyearfont}[1]{#1} \providecommand{\isbn}[1]{ISBN #1}
+  \providecommand{\url}[1]{\texttt{#1}} \providecommand{\urlprefix}{}
+  \providecommand{\nameseparator}{;}
+  \providecommand{\namereplace}[1]{{---{}---} \ifx\datebegin\relax \else
+  \def\datebegin #1.{\relax}\fi} \providecommand{\dateend}[1]{, #1}
+  \providecommand{\bibtitle}[1]{#1}\providecommand{\bibtranslator}[1]{#1}
+  \providecommand{\bibtranslatorname}{Traducido por }
+  \providecommand{\selectlanguage}[1]{\relax} \providecommand{\finalpoint}{.}
+  \providecommand{\namesend}{:} \providecommand{\Capitalize}[1]{\uppercase{#1}}
+  \providecommand{\capitalize}[1]{\expandafter\Capitalize#1}
+  \providecommand{\bibinfont}[1]{\textbf{#1}}
+  \providecommand{\inbooktitlefont}[1]{\emph{#1}}
+  \providecommand{\bibvolfont}[1]{\textbf{#1}}
+  \providecommand{\bibandfont}[1]{#1}
+  \providecommand{\bibcommentname}{\textsc{Obs:}}
+  \providecommand{\bibcomment}[2]{\begin{quotation}
+  \noindent\textsc{\bibcommentname}\ #2\end{quotation}}
+  \providecommand{\bibabstract}[2]{\begin{quotation}
+  \noindent\textsc{\Abstractname:}\ #2\end{quotation}}
+\providecommand{\bblin}{En} \providecommand{\bbland}{y}
+  \providecommand{\bbletal}{et al.} \providecommand{\bbled}{ed.}
+  \providecommand{\bbleds}{Eds.} \providecommand{\bbvolume}{Vol.}
+  \providecommand{\bblof}{de} \providecommand{\bbledition}{ª~edición}
+  \providecommand{\bblp}{p.}  \providecommand{\bblpp}{pp.}
+  \providecommand{\bbltechreport}{Informe técnico}
+  \providecommand{\bblmthesis}{Tesina} \providecommand{\bblphdthesis}{Tesis
+  doctoral} \providecommand{\bblchapter}{cap\'\i{}tulo}
+  \providecommand{\bblnumber}{número} \providecommand{\bblvolume}{volumen}
+  \providecommand{\MR}[1]{\relax\ifhmode\unskip\space\fi MR #1}
+  \expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else  \providecommand{\doi}{doi:
+  \begingroup \urlstyle{rm}\Url}\fi
+%Para resultados estilo plain descomente la l'inea siguiente
+%\let\oldbibitem=\bibitem \def\bibitem[#1]#2{\oldbibitem{#2}}
+
+\end{thebibliography}

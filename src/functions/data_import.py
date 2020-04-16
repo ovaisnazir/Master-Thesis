@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import datetime as dt
 import gc
+import re
 
 def reduce_mem_usage(df):
     """ iterate through all the columns of a dataframe and modify the data type
@@ -39,24 +40,19 @@ def reduce_mem_usage(df):
     end_mem = df.memory_usage().sum() / 1024**2
     print('Memory usage after optimization is: {:.2f} MB'.format(end_mem))
     print('Decreased by {:.1f}%'.format(100 * (start_mem - end_mem) / start_mem))
-    
+   
     return df
 
 
-def import_data(file, *date_col):
-    """create a dataframe and optimize its memory usage"""
-    if date_col:
-        df = pd.read_csv(file, parse_dates=[date_col])
-        df = reduce_mem_usage(df)
-    else:
-        df = pd.read_csv(file, keep_date_col=True)
-        df = reduce_mem_usage(df)
-                                                               
+def import_data(file):
+    """Create a dataframe and optimize its memory usage"""
+    df = pd.read_csv(file, keep_date_col=True)
+    df = reduce_mem_usage(df)                                                            
     return df
-
 
 def walklevel(some_dir, level):
-    """It works just like os.walk, but you can pass it a level parameter
+    """
+       It works just like os.walk, but you can pass it a level parameter
        that indicates how deep the recursion will go.
        If depth is -1 (or less than 0), the full depth is walked.
     """
@@ -69,7 +65,7 @@ def walklevel(some_dir, level):
         if num_sep + level <= num_sep_this:
             del dirs[:]
 
-def load_data(loc, level=0):
+def load_csv_files(loc, level=0):
     """ It loads all csv files in a location and returns a list of data frames 
         created from those files. Inputs:
             - loc: directory where the csv files are located.
@@ -84,42 +80,15 @@ def load_data(loc, level=0):
     
     return df_list
 
-def import_raw_data(loc):
-    df_list = load_data(loc) 
-    df = pd.merge(
-        pd.merge(df_list[0], df_list[1], how='left', on='building_id'),
-        df_list[2],
-        how='left',
-        on=['site_id','timestamp']
-    )
-    df['timestamp'] = pd.to_datetime(df['timestamp'])   
-    df['year_built'] = pd.array(df['year_built'], dtype=pd.Int16Dtype())
-    df['floor_count'] = pd.array(df['floor_count'], dtype=pd.Int16Dtype())
-
-    # Rearranging columns
-    cols = [
-        'site_id',
-        'building_id', 
-        'year_built', 
-        'primary_use', 
-        'floor_count', 
-        'square_feet',
-        'meter',  
-        'timestamp',
-        'air_temperature', 
-        'cloud_coverage',
-        'dew_temperature',
-        'precip_depth_1_hr',
-        'sea_level_pressure',
-        'wind_direction',
-        'wind_speed',
-        'meter_reading'
-    ]
-
-    df = df[cols]
-    return df
-
-def get_data_by_site(df, site):
-    df = df[df['site_id'] == site]
-    del df['site_id']
-    return df
+def get_data_by_wf(df, folder):
+    df_lst = []
+    wf_lst = df['WF'].unique()
+    
+    for wf in wf_lst:
+        df_lst.append(df[df['WF'] == wf])
+    
+    for i in range(len(df_lst)):
+        del df_lst[i]['WF']
+        df_lst[i].to_csv('../data/interim/by_WF/{}/df_WF{}.csv'.format(folder, i+1), index=False)
+        
+    return df_lst
