@@ -11,14 +11,14 @@ MaxPos.x=-1
 MaxPos.y=-1
 NormalPos.left=4
 NormalPos.top=26
-NormalPos.right=1916
-NormalPos.bottom=733
+NormalPos.right=1562
+NormalPos.bottom=710
 Class=LaTeXView
 Document=TFMReport-muisd-victor-chaparro.tex
 
 [Frame0_View0,0]
-TopLine=63
-Cursor=2658
+TopLine=0
+Cursor=2930
 
 [SessionInfo]
 FrameCount=1

@@ -15,79 +15,87 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from metpy import calc
 from metpy.units import units
 
-# Obtención del módulo de la velocidad
+# get wind velocity module
 get_wind_velmod = lambda x : float(calc.wind_speed(
     x.U * units.meter/units.second, 
-    x.V * units.meter/units.second,
+    x.V * units.meter/units.second
 ).magnitude)
 
-# Obtención de la dirección (meteorológica) del viento
+# get wind direction (metheorological direction) 
 get_wind_dir = lambda x : float(calc.wind_direction(
     x.U * units.meter/units.second, 
     x.V * units.meter/units.second, 
     convention="from"
 ).magnitude)
 
+# Enconding cyclic variables
+def encode_cyclic(data, col, max_val):
+    data[col + '_sin'] = np.sin(2 * np.pi * data[col]/max_val)
+    data[col + '_cos'] = np.cos(2 * np.pi * data[col]/max_val)
+    
 
-class DerivedAttributesAdder(BaseEstimator, TransformerMixin):
+    
+# Class to add the new features
+class NewFeaturesAdder(BaseEstimator, TransformerMixin):
 
-    def __init__(self, add_time_feat=True, add_cyclic_feat=True):
+    def __init__(self, add_time_feat=True, add_cycl_feat=True, add_inv_T=True): 
         self.add_time_feat = add_time_feat
-        self.add_cyclic_feat= add_cyclic_feat
+        self.add_cycl_feat = add_cycl_feat
+        self.add_inv_T = add_inv_T
+
 
     def fit(self, documents, y=None):
         return self
 
     def transform(self, x_dataset):
-        # Creamos atributos derivados de las componentes de la velocidad
+        
+        # Velocity derived features
         x_dataset['w_vel'] = x_dataset.apply(get_wind_velmod, axis=1)
         x_dataset['w_dir'] = x_dataset.apply(get_wind_dir, axis=1)
         
-        
         if self.add_time_feat:
-            # Creamos atributos derivados de la fecha
-            x_dataset['month'] = x_dataset['Time'].dt.month
+            # Time derived features
             x_dataset['hour'] = x_dataset['Time'].dt.hour
-            x_dataset['day_of_week'] = x_dataset['Time'].dt.dayofweek
-            x_dataset['day_of_month'] = x_dataset['Time'].dt.day
+            x_dataset['month'] = x_dataset['Time'].dt.month
+        
+        if self.add_cycl_feat: 
+            # Time derived features
+            x_dataset['hour'] = x_dataset['Time'].dt.hour
+            x_dataset['month'] = x_dataset['Time'].dt.month
             
-        if self.add_cyclic_feat:
             # Hour
-            x_dataset['hr_sin'] = np.sin(x_dataset['hour'] * (2.* np.pi / 24))
-            x_dataset['hr_cos'] = np.cos(x_dataset['hour'] * (2.* np.pi / 24))
-
-            # Day of the week
-            x_dataset['wday_sin'] = np.sin(x_dataset['day_of_week'] * (2.* np.pi / 7))
-            x_dataset['wday_cos'] = np.cos(x_dataset['day_of_week'] * (2.* np.pi / 7))
-
+            encode_cyclic(x_dataset, 'hour', 24)
+        
             # Month
-            x_dataset['mnth_sin'] = np.sin((x_dataset['month']-1) * (2.* np.pi / 12))
-            x_dataset['mnth_cos'] = np.cos((x_dataset['month']-1) * (2.* np.pi / 12))
+            encode_cyclic(x_dataset, 'month', 12)  
             
             # Wind direction
-            x_dataset['wdir_sin'] = np.sin(x_dataset['w_dir'] * (2.* np.pi / 360))
-            x_dataset['wdir_cos'] = np.cos(x_dataset['w_dir'] * (2.* np.pi / 360))
-            
-             
+            encode_cyclic(x_dataset,'w_dir', 360)
+        
+        if self.add_inv_T:
+            x_dataset['inv_T'] = 1 / x_dataset['T']
+
         return x_dataset
 
 
-def get_col_prefixes(cols):
+def get_col_prefixes(cols, regex):
     
-    prefix_lst = []
-    regex = 'NWP(?P<NWP>\d{1})_(?P<run>\d{2}h)_(?P<fc_day>D\W?\d?)_(?P<weather_var>\w{1,4})' 
+    prefix_lst = [] 
     p = re.compile(regex)
     
     for col in cols:
         m = p.match(col)
-        col_prefix = 'NWP' + m.group('NWP') + '_' +  m.group('run') + '_' + m.group('fc_day') + '_'
-        prefix_lst.append(col_prefix)
+        
+        if m is not None:
+            col_prefix = 'NWP' + m.group('NWP') + '_' + m.group('met_var')
+            prefix_lst.append(col_prefix)
     
     prefix_lst = list(OrderedDict.fromkeys(prefix_lst))
         
     return prefix_lst
 
-def get_df_for_eda(df):
+
+def get_df_for_eda(df, regex = r'NWP(?P<NWP>\d{1})_(?P<run>\d{2}h)_(?P<fc_day>D\W?\d?)_'):
     """
         Convert the dataframe (test/train) to an easily manipulate format,
         without changing the data itself.      
@@ -96,12 +104,11 @@ def get_df_for_eda(df):
     df_tmp = pd.DataFrame([])  
 
     # Regular expresion to capture the values from the column names
-    regex = 'NWP(?P<NWP>\d{1})_(?P<run>\d{2}h)_(?P<fc_day>D\W?\d?)_' 
     p = re.compile(regex)
     
     # Get prefix list
     cols = df.columns[3:-1] 
-    prefix_lst = get_col_prefixes(cols)
+    prefix_lst = get_col_prefixes(cols, regex)
     
     for prefix in prefix_lst:
         
@@ -166,6 +173,7 @@ def get_df_for_eda(df):
         
     return df_tmp
 
+
 def split_data_by_date(date, X, y):
     """
     It splits X and y sets by a 'Time' value 
@@ -187,3 +195,98 @@ def split_data_by_date(date, X, y):
     sets['y_test'] = y_test
     
     return sets
+
+def add_new_cols(new_cols, df):
+    
+    for col in new_cols:
+        df[col] = np.nan 
+
+
+def input_missing_values(df, cols):
+    
+    regex = r'NWP(?P<NWP>\d{1})_(?P<run>\d{2}h)_(?P<fc_day>D\W?\d?)_(?P<weather_var>\w{1,4})'
+    p = re.compile(regex)  
+    
+    NWP_met_vars_dict = {
+        '1': ['U','V','T'],
+        '2': ['U','V'],
+        '3': ['U','V','T'],
+        '4': ['U','V','CLCT']
+    }
+    
+    for col in reversed(cols):
+        m = p.match(col)
+        col_name = 'NWP' + m.group('NWP') + '_' +  m.group('run') + '_' + m.group('fc_day') + '_' + m.group('weather_var')
+
+        for key, value in NWP_met_vars_dict.items():
+            for i in value:
+                if m.group('NWP') == key and m.group('weather_var') == i:
+                    df['NWP'+ key + '_' + i] = df['NWP'+ key + '_' + i].fillna(df[col_name])
+    
+    return df
+
+
+def interpolate_missing_values(df, cols, index):
+    
+    df.index = df[index]
+    del df[index]
+    
+    for var in cols:
+        df[var].interpolate(
+            method='time', 
+            inplace=True,
+            limit=2,
+            limit_direction='both'
+        )
+    
+    df.reset_index(inplace=True)
+    
+    return df
+
+
+def add_wind_vars(df, regex):
+    
+    p = re.compile(regex)
+    cols = get_col_prefixes(list(df.columns), regex)
+    
+    for col in cols:
+        m = p.match(col)
+
+        nwp = m.group('NWP')
+        sub_df = df[['NWP' + nwp + '_' + 'U','NWP' + nwp + '_' + 'V']]
+        sub_df.rename(columns={'NWP' + nwp + '_' + 'U': "U", 'NWP' + nwp + '_' + 'V': "V"}, inplace=True)
+
+        df['NWP' + nwp + '_wvel'] = sub_df.apply(get_wind_velmod, axis=1)
+        df['NWP' + nwp + '_wdir'] = sub_df.apply(get_wind_dir, axis=1)
+        df['NWP' + nwp + '_wdir_sin'] = np.sin(2 * np.pi * df['NWP' + nwp + '_wdir'] / 360)
+        df['NWP' + nwp + '_wdir_cos'] = np.cos(2 * np.pi * df['NWP' + nwp + '_wdir'] / 360)
+
+        if nwp == '4':
+            height = 10
+            df['NWP' + nwp + '_wshear']= df['NWP' + nwp + '_wvel'] * ((50 / height) ** 0.14)
+        else:
+            height = 100
+            df['NWP' + nwp + '_wshear']= df['NWP' + nwp + '_wvel'] * ((50 / height) ** 0.14)
+
+        del sub_df
+
+    return df
+
+
+def add_time_vars(df, time_col):
+
+    df['hour'] = df[time_col].dt.hour
+    df['month'] = df[time_col].dt.month
+
+    encode_cyclic(df, 'hour', 24)
+    encode_cyclic(df, 'month', 12)
+
+    return df
+    
+
+def convert_to_celsius(df, col_list):
+
+    for col in col_list:
+        df[col] = df[col] - 273.15
+
+    return df
