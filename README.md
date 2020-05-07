@@ -1,5 +1,5 @@
 Master Thesis: 
-"Wind Power forecasting for the day-ahead energy market"
+"Wind Power Forecasting Using Machine Learning Techniques"
 ==============================
 
 Master Thesis on Decision Systems Engineering (https://www.urjc.es/estudios/master/915-ingenieria-de-sistemas-de-decision).
