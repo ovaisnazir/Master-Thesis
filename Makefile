@@ -4,6 +4,10 @@
 # GLOBALS                                                                       #
 #################################################################################
 
+X_TRAIN_URL = "https://challengedata.ens.fr/participants/challenges/34/download/x-train"
+X_TEST_URL  = "https://challengedata.ens.fr/participants/challenges/34/download/x-test"
+Y_TRAIN_URL = "https://challengedata.ens.fr/participants/challenges/34/download/y-train"
+
 PROJECT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 BUCKET = [OPTIONAL] your-bucket-for-syncing-data (do not include 's3://')
 PROFILE = default
