@@ -1,14 +1,6 @@
-import os
 import pandas as pd
 import numpy as np
 import datetime as dt
-import gc
-from src.functions import data_import as dimp
-from src.functions import data_exploration as dexp
-import matplotlib.pyplot as plt
-import seaborn as sns
-import missingno as msno
-import pandas_profiling
 import re
 from collections import OrderedDict
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -38,7 +30,7 @@ def encode_cyclic(data, col, max_val):
 # Class to add the new features
 class NewFeaturesAdder(BaseEstimator, TransformerMixin):
 
-    def __init__(self, add_time_feat=True, add_cycl_feat=True, add_inv_T=True): 
+    def __init__(self, add_time_feat=True, add_cycl_feat=True, add_inv_T=False): 
         self.add_time_feat = add_time_feat
         self.add_cycl_feat = add_cycl_feat
         self.add_inv_T = add_inv_T
@@ -204,7 +196,7 @@ def add_new_cols(new_cols, df):
 
 def input_missing_values(df, cols):
     
-    regex = r'NWP(?P<NWP>\d{1})_(?P<run>\d{2}h)_(?P<fc_day>D\W?\d?)_(?P<weather_var>\w{1,4})'
+    regex = 'NWP(?P<NWP>\d{1})_(?P<run>\d{2}h)_(?P<fc_day>D\W?\d?)_(?P<weather_var>\w{1,4})'
     p = re.compile(regex)  
     
     NWP_met_vars_dict = {
