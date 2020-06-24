@@ -136,8 +136,12 @@ def export_data(folder, WF, X_train, X_test, y_train, y_test):
 @click.argument('input_filepath', type=click.Path(exists=True))
 @click.argument('output_filepath', type=click.Path())
 def main(input_filepath, output_filepath):
-    """ Runs data processing scripts to turn raw data from input_filepath (data/raw) into
-        cleaned data ready for feature engineering, saved in output_filepath (data/interim).
+    """ 
+    It creates data sets X_train, X_test, y_train, y_test from raw data (data/raw) 
+    for every Wind Farm (data/interim) by:
+        - Imputing missing values.
+        - Selecting the best weather predictors by NWP.
+        - Dropping non used attributes in next steps of the ML flow.
     """
     logger = logging.getLogger(__name__)
     logger.info('making final data set from raw data')
