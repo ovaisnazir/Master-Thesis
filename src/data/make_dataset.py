@@ -9,6 +9,10 @@ from src.timer import timer
 import datetime as dt
 import re
 import os
+from metpy import calc
+from metpy.units import units
+import matplotlib.pyplot as plt
+from sklearn.cluster import DBSCAN
 
 def reduce_mem_usage(df):
     """ 
@@ -123,6 +127,85 @@ def interpolate_missing_values(df, cols, index):
     return df
 
 
+# lambda function to get wind velocity module
+get_wind_velmod = lambda x : float(calc.wind_speed(
+    x.U * units.meter/units.second, 
+    x.V * units.meter/units.second
+).magnitude)
+
+
+
+def fix_negative_clct(df):
+    """Replaces negative values of CLCT by 0."""
+    df.loc[df['CLCT'] < 0, 'CLCT'] = 0.0
+    
+
+def save_fig(fig_id, folder, WF, tight_layout=True, fig_extension="png", resolution=300):
+    os.makedirs(folder + '/' + WF, exist_ok=True)
+    path = os.path.join(folder + '/' + WF, fig_id + "." + fig_extension)
+
+    if tight_layout:
+        plt.tight_layout()
+        
+    plt.savefig(path, format=fig_extension, dpi=resolution)
+
+
+def find_outliers(X, y, fig_id, folder, wf):
+    """Finds outliers based on power curve, using DBSCAN algorithm."""
+    
+    # Add 'Production' column
+    X['Production'] = list(y['Production'])
+
+    # Calculate wind velocity module
+    X['vel'] = X.apply(get_wind_velmod, axis=1)
+
+    # Build data matrix
+    X1 = X['vel'].values.reshape(-1,1)
+    X2 = X['Production'].values.reshape(-1,1)
+    X = np.concatenate((X1,X2), axis=1)
+
+    # Select appropiate values for DBSCAN hyperparameters
+    # Interim, I need to find a better way to automate the outlier detection.
+    if wf == 'WF1':
+        eps = 0.3
+        min_samples = 55 
+    elif wf == "WF2":
+        eps = 0.47
+        min_samples = 30
+    elif wf == "WF3":
+        eps = 0.7
+        min_samples = 55
+    elif wf == "WF4":
+        eps = 0.5
+        min_samples = 30
+    elif wf == "WF5":
+        eps = 0.25
+        min_samples = 8
+    else:
+        eps = 0.18
+        min_samples = 20
+
+    # Using DBSCAN to find outliers
+    outlier_detection = DBSCAN(eps = eps, 
+                               metric = "mahalanobis", 
+                               algorithm = 'brute', 
+                               min_samples = min_samples, 
+                               n_jobs = -1)
+    clusters = outlier_detection.fit_predict(X)
+    outliers = np.where(clusters == -1)[0]
+    
+    # Plot outliers
+    plt.scatter(*X.T, color='yellowgreen', marker='.', label='Inliers')
+    plt.scatter(*X[outliers].T, color='gold', marker='.', label='Outliers')
+    plt.legend(loc='lower right')
+    plt.xlabel("wind speed [m/s]")
+    plt.ylabel("wind power [MWh]")
+    save_fig(fig_id, folder, wf)
+
+    return outliers
+
+
+
 def export_data(folder, WF, X_train, X_test, y_train, y_test):
     """Export data frames to specified folder."""
     os.makedirs(folder + '/' + WF, exist_ok=True)
@@ -135,34 +218,30 @@ def export_data(folder, WF, X_train, X_test, y_train, y_test):
 @click.command()
 @click.argument('input_filepath', type=click.Path(exists=True))
 @click.argument('output_filepath', type=click.Path())
-def main(input_filepath, output_filepath):
+@click.argument('fig_output_filepath', type=click.Path())
+
+def main(input_filepath, output_filepath, fig_output_filepath):
     """ 
     It creates data sets X_train, X_test, y_train, y_test from raw data (data/raw) 
     for every Wind Farm (data/interim) by:
         - Imputing missing values.
         - Selecting the best weather predictors by NWP.
         - Dropping non used attributes in next steps of the ML flow.
+        - Handling outliers and abnormal data
     """
     logger = logging.getLogger(__name__)
     logger.info('making final data set from raw data')
     
     # Import raw data
     with timer("Loading raw data"):
-        X_train = import_data(input_filepath + 'X_train_raw.csv')
-        X_train['Time'] = pd.to_datetime(X_train['Time'], format='%d/%m/%Y %H:%M')
-        y_train = import_data(input_filepath + 'y_train_raw.csv')
+        X = import_data(input_filepath + 'X_train_raw.csv')
+        X['Time'] = pd.to_datetime(X['Time'], format='%d/%m/%Y %H:%M')
+        y = import_data(input_filepath + 'y_train_raw.csv')
         
-        
-    # Split raw data into train and test df's
-    with timer("Generating train and test cleaned data sets by WF"):
-        train_test_dfs = split_data_by_date('2018-11-13 23:00:00', X_train, y_train)
-        X_train_2 = train_test_dfs.get('X_train')
-        X_test = train_test_dfs.get('X_test')
-        y_train_2 = train_test_dfs.get('y_train')
-        y_test = train_test_dfs.get('y_test')
-        
+
+    with timer("Making data sets by Wind Farm"):
         # Wind farm list
-        WF_lst = X_train['WF'].unique()
+        WF_lst = X['WF'].unique()
         
         # New columns that will be added to data sets
         new_cols = ['NWP1_U','NWP1_V','NWP1_T','NWP2_U','NWP2_V','NWP3_U',
@@ -173,55 +252,56 @@ def main(input_filepath, output_filepath):
         
         for WF in WF_lst:
             # Make a copy of the data to not losing its initial format
-            X_train_cpy = X_train_2.copy()
-            X_test_cpy  = X_test.copy()
-            y_train_cpy = y_train_2.copy()
-            y_test_cpy = y_test.copy()
+            X_cpy = X.copy()
+            y_cpy = y.copy()
                 
             # Row selection by WF
-            X_train_cpy = X_train_cpy[X_train_cpy['WF'] == WF]
-            X_test_cpy = X_test_cpy[X_test_cpy['WF'] == WF]
+            X_cpy = X_cpy[X_cpy['WF'] == WF]
             
             # Save observations identification
-            ID_train = X_train_cpy['ID']
-            ID_test = X_test_cpy['ID']
+            ID_X = X_cpy['ID']
         
-            # Row selection for y_train
-            y_train_cpy = y_train_cpy[['ID','Production']]
-            y_train_cpy = y_train_cpy[y_train_cpy.ID.isin(ID_train.values)]
+            # Row selection for y
+            y_cpy = y_cpy[['ID','Production']]
+            y_cpy = y_cpy[y_cpy.ID.isin(ID_X.values)]
             
-            # Row selection for y_test
-            y_test_cpy = y_test_cpy[['ID','Production']]
-            y_test_cpy = y_test_cpy[y_test_cpy.ID.isin(ID_test.values)]
-        
-            # Add new columns to X_train and X_test
-            add_new_cols(new_cols, X_train_cpy)
-            add_new_cols(new_cols, X_test_cpy)
+            # Add new columns to X
+            add_new_cols(new_cols, X_cpy)
             
             # Impute missing values
-            X_train_cpy = input_missing_values(X_train_cpy, X_train.columns[3:])
-            X_test_cpy = input_missing_values(X_test_cpy, X_test.columns[3:-9])
-            interpolate_missing_values(X_train_cpy, col_list, 'Time')
-            interpolate_missing_values(X_test_cpy, col_list, 'Time')   
+            X_cpy = input_missing_values(X_cpy, X.columns[3:])
+            interpolate_missing_values(X_cpy, col_list, 'Time')  
      
             # Select the best NWP predictions for weather predictors
-            X_train_cpy['U'] = X_train_cpy.NWP1_U
-            X_train_cpy['V'] = X_train_cpy.NWP1_V
-            X_train_cpy['T'] = X_train_cpy.NWP3_T
-            X_train_cpy['CLCT'] = X_train_cpy.NWP4_CLCT
+            X_cpy['U'] = X_cpy.NWP1_U
+            X_cpy['V'] = X_cpy.NWP1_V
+            X_cpy['T'] = X_cpy.NWP3_T
+            X_cpy['CLCT'] = X_cpy.NWP4_CLCT
             
-            X_test_cpy['U'] = X_test_cpy.NWP1_U
-            X_test_cpy['V'] = X_test_cpy.NWP1_V
-            X_test_cpy['T'] = X_test_cpy.NWP3_T
-            X_test_cpy['CLCT'] = X_test_cpy.NWP4_CLCT
-         
-            X_train_cpy = X_train_cpy[['ID','Time','U','V','T','CLCT']]
-            X_test_cpy = X_test_cpy[['ID','Time','U','V','T','CLCT']]
+            # Select final features
+            X_cpy = X_cpy[['ID','Time','U','V','T','CLCT']]
+    
+            # Detect outliers and abnormal data
+
+            fix_negative_clct(X_cpy)
+            outliers = find_outliers(X_cpy, y_cpy, "outliers", fig_output_filepath, WF)
+            plt.close()
+            X_cpy.drop(X_cpy.index[list(outliers)], inplace=True)
+            y_cpy.drop(y_cpy.index[list(outliers)], inplace=True)
+                
             
-            # Export data to csv
-            export_data(output_filepath, WF, X_train_cpy, X_test_cpy, y_train_cpy, y_test_cpy)
-            
-            
+            # Split data into X_train, X_test, y_train, y_test
+            with timer("Spliting data for {} into train and test df's".format(WF)):
+                train_test_dfs = split_data_by_date('2018-11-13 23:00:00', X_cpy, y_cpy)
+                X_train = train_test_dfs.get('X_train')
+                X_test = train_test_dfs.get('X_test')
+                y_train = train_test_dfs.get('y_train')
+                y_test = train_test_dfs.get('y_test')
+                
+                # Export data to csv
+                export_data(output_filepath, WF, X_train, X_test, y_train, y_test)
+    
+                  
 if __name__ == '__main__':
     log_fmt = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     logging.basicConfig(level=logging.INFO, format=log_fmt)
